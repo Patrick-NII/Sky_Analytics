@@ -69,3 +69,42 @@ if data_nettoyee is not None:
 
 
 
+# Algorithmes d'automation de taches
+
+import schedule
+import time
+from datetime import datetime
+
+
+
+def current_time():
+    now = datetime.now()
+    print('What is the current time?', now.strftime('%H:%M:%S'))
+
+def hello():
+    print("hello, how are you?")
+
+# Définir les tâches pour qu'elles se lancent toutes les 10 secondes
+schedule.every(10).seconds.do(current_time)
+schedule.every(10).seconds.do(hello)
+
+# Lancer la boucle pour exécuter les tâches planifiées
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
+
+# Exécution à une heure précise
+schedule.every().day.at("10:55").do(current_time)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+    
+    
+# Avec choix du jour de la semaine
+schedule.every().wednesday.at("16:00").do(current_time)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
