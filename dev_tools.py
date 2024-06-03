@@ -42,3 +42,8 @@ while datetime.now() < end_date:
     schedule.run_pending()
     time.sleep(1)
 print("Fin du programme")
+
+
+def say_hello(name):
+    print(f"Hello {name} !")
+    
