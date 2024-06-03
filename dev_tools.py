@@ -88,9 +88,40 @@ def autoclean_dataset(dataset_path):
 
 
 
+import pandas as pd
+import os
+import schedule
+import time
+from datetime import datetime
 
-def say_hello(name_user):
-    return (f"Hello, {name_user}!")
-        
+# Fonction pour récupérer les données à partir de la bas de données
+def retrieve_data():
     
-print(say_hello("John"))
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    logs_url = f"http://sc-e.fr/docs/logs_vols_{today}.csv"
+    degradations_url = f"http://sc-e.fr/docs/degradations_{today}.csv"
+    
+    
+    logs_data = pd.read_csv(logs_url)
+    degradations_data = pd.read_csv(degradations_url)
+    
+
+# Fonction de nettoyage
+def autoclean_dataset(dataset_path):
+    # Ajoutez ici votre fonction de nettoyage de données existante
+
+    # Automatisation des tâches
+    def main_task():
+        # Récupérez les données
+        retrieve_data()
+        # Nettoyez les données
+        autoclean_dataset("data_clean.csv")
+
+# Définir la planification des tâches
+schedule.every().day.at("09:30").do(main_task)
+
+# Boucle pour exécuter les tâches planifiées
+while True:
+    schedule.run_pending()
+    time.sleep(1)
