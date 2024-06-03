@@ -89,3 +89,8 @@ def autoclean_dataset(dataset_path):
 
 
 
+def say_hello(name_user):
+    return (f"Hello, {name_user}!")
+        
+    
+print(say_hello("John"))
