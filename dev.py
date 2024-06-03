@@ -60,7 +60,7 @@ def autoclean_dataset(dataset_path):
     data.drop_duplicates(inplace=True)
     duplicates_removed = original_shape[0] - data.shape[0]
     if duplicates_removed > 0:
-        print(f"\n{duplicates_removed} Doublons supprimées.")
+        print(f"{duplicates_removed} Doublons supprimées.")
     else:
         print("Aucun doublons trouvée.")
         
