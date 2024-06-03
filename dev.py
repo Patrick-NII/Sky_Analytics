@@ -1,3 +1,49 @@
+# Algorithmes d'automation de taches
+
+import schedule
+import time
+from datetime import datetime
+
+
+
+def current_time():
+    now = datetime.now()
+    print('What is the current time?', now.strftime('%H:%M:%S'))
+
+def hello():
+    print("hello, how are you?")
+
+# Définir les tâches pour qu'elles se lancent toutes les 10 secondes
+schedule.every(10).seconds.do(current_time)
+schedule.every(10).seconds.do(hello)
+
+# Lancer la boucle pour exécuter les tâches planifiées
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
+
+# Exécution à une heure précise
+schedule.every().day.at("10:55").do(current_time)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+    
+    
+# Avec choix du jour de la semaine
+schedule.every().wednesday.at("16:00").do(current_time)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+    
+    
+    
+    
+    
+# Algotithme de nettoyage de dataset
+
 def autoclean_dataset(dataset_path):
     try:
         # Chargement du dataset
@@ -59,52 +105,7 @@ def autoclean_dataset(dataset_path):
     # Retourner le dataset nettoyé
     return data
 
-# Exemple d'utilisation de la fonction
-dataset_path = r"D:\Sky_Analytics\df_aeronef.csv"
-data_nettoyee = autoclean_dataset(dataset_path)
-if data_nettoyee is not None:
-    print("\nTaille du dataset nettoyé :", data_nettoyee.shape)
-    
-    
 
 
 
-# Algorithmes d'automation de taches
 
-import schedule
-import time
-from datetime import datetime
-
-
-
-def current_time():
-    now = datetime.now()
-    print('What is the current time?', now.strftime('%H:%M:%S'))
-
-def hello():
-    print("hello, how are you?")
-
-# Définir les tâches pour qu'elles se lancent toutes les 10 secondes
-schedule.every(10).seconds.do(current_time)
-schedule.every(10).seconds.do(hello)
-
-# Lancer la boucle pour exécuter les tâches planifiées
-while True:
-    schedule.run_pending()
-    time.sleep(1)
-
-
-# Exécution à une heure précise
-schedule.every().day.at("10:55").do(current_time)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
-    
-    
-# Avec choix du jour de la semaine
-schedule.every().wednesday.at("16:00").do(current_time)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
