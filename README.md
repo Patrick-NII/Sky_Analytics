@@ -1,6 +1,5 @@
-## SkyAnalytics: Prédiction et
-## Optimisation de la ##
-## Maintenance Aéronautique ##
+# SkyAnalytics #
+## Prédiction et Optimisation de la Maintenance Aéronautique ##
 
 
 Objectif du projet :
