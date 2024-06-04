@@ -20,8 +20,8 @@ def keep_data():
     df_degrade = pd.concat([df_degrade, degradations_data], axis=0)
 
 # Fonction de nettoyage
-def autoclean_dataset():
-    data = logs_vols  # Ou df_degrade selon ce que vous voulez nettoyer
+def autoclean_dataset(data):
+    data = pd.read_csv(data)
     print("Résumé des données :")
     print(skim(data))
     print("Valeurs manquantes :")
@@ -32,18 +32,18 @@ def autoclean_dataset():
     # Copie du dataset original pour les modifications
     cleaned_data = data.copy()
 
-# Définir la planification des tâches
-schedule.every().day.at("09:30").do(keep_data)
-schedule.every().day.at("09:31").do(autoclean_dataset)
+# # Définir la planification des tâches
+# schedule.every().day.at("09:30").do(keep_data)
+# schedule.every().day.at("09:31").do(autoclean_dataset)
 
-end_date = datetime(2024, 7, 27)
-# Boucle pour exécuter les tâches planifiées
-while datetime.now() < end_date:
-    schedule.run_pending()
-    time.sleep(1)
-print("Fin du programme")
+# end_date = datetime(2024, 7, 27)
+# # Boucle pour exécuter les tâches planifiées
+# while datetime.now() < end_date:
+#     schedule.run_pending()
+#     time.sleep(1)
+# print("Fin du programme")
 
 
 def say_hello(name):
-    print(f"Hello {name} !")
+    return (f"Hello {name} !")
     
