@@ -10,7 +10,7 @@ logs_vols = pd.DataFrame()
 df_degrade = pd.DataFrame()
 
 # Fonction pour récupérer les données à partir de la base de données
-def keep_data():
+def keep_data(data):
     today = datetime.today().strftime('%Y-%m-%d')
     
     logs_data = pd.read_csv(f"http://sc-e.fr/docs/logs_vols_{today}.csv", sep=",")
