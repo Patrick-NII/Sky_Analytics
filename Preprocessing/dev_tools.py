@@ -22,12 +22,12 @@ def keep_data(data):
 # Fonction de nettoyage
 def autoclean_dataset(data):
     data = pd.read_csv(data)
-    print("Résumé des données :")
-    print(skim(data))
-    print("Valeurs manquantes :")
-    print(data.isnull().sum())
-    print("Valeurs uniques par colonne :")
-    print(data.nunique())
+    return ("Résumé des données :")
+    return (skim(data))
+    return ("Valeurs manquantes :")
+    return (data.isnull().sum())
+    return ("Valeurs uniques par colonne :")
+    return (data.nunique())
     
     # Copie du dataset original pour les modifications
     cleaned_data = data.copy()
