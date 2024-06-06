@@ -33,8 +33,8 @@ def autoclean_dataset(data):
     cleaned_data = data.copy()
 
 # # Définir la planification des tâches
-# schedule.every().day.at("09:30").do(keep_data)
-# schedule.every().day.at("09:31").do(autoclean_dataset)
+# schedule.every().day.at("13:57").do(keep_data)
+# schedule.every().day.at("13:59").do(autoclean_dataset)
 
 # end_date = datetime(2024, 7, 27)
 # # Boucle pour exécuter les tâches planifiées
