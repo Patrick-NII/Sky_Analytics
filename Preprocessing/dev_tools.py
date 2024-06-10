@@ -22,11 +22,11 @@ def load_data_url():
 
 # Fonction pour charger les derniers fichiers locaux
 def local_data():
-    logs_vols_path = sorted([f for f in os.listdir('D:\\Top_gun\\Datasets\\df_logs_vols') if f.startswith('logs_vols_')])[-1]
-    degradations_path = sorted([f for f in os.listdir('D:\\Top_gun\\Datasets\\df_degradations') if f.startswith('degradations_')])[-1]
+    logs_vols_path = sorted([f for f in os.listdir('Datasets\\df_logs_vols') if f.startswith('logs_vols_')])[-1]
+    degradations_path = sorted([f for f in os.listdir('Datasets\\df_degradations') if f.startswith('degradations_')])[-1]
     
-    logs_vols = pd.read_csv(f"D:\\Top_gun\\Datasets\\df_logs_vols\\{logs_vols_path}")
-    df_degrade = pd.read_csv(f"D:\\Top_gun\\Datasets\\df_degradations\\{degradations_path}")
+    logs_vols = pd.read_csv(f"Datasets\\df_logs_vols\\{logs_vols_path}")
+    df_degrade = pd.read_csv(f"Datasets\\df_degradations\\{degradations_path}")
     
     return logs_vols, df_degrade
 
@@ -70,8 +70,8 @@ def main():
     cleaned_df_degrade = autoclean_dataset(df_degrade)
     
     # Chemins vers les fichiers à écraser
-    logs_vols_file_path = f"D:\\Top_gun\\Datasets\\df_logs_vols\\logs_vols_{datetime.today().strftime('%Y-%m-%d')}.csv"
-    degradations_file_path = f"D:\\Top_gun\\Datasets\\df_degradations\\degradations_{datetime.today().strftime('%Y-%m-%d')}.csv"
+    logs_vols_file_path = f"Datasets\\df_logs_vols\\logs_vols_{datetime.today().strftime('%Y-%m-%d')}.csv"
+    degradations_file_path = f"Datasets\\df_degradations\\degradations_{datetime.today().strftime('%Y-%m-%d')}.csv"
     
     # Sauvegarder les fichiers nettoyés
     save_cleaned_data(cleaned_logs_vols, logs_vols_file_path)
