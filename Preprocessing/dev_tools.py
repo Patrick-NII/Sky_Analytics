@@ -49,13 +49,12 @@
     
     
     
-    
-import pandas as pd
 import os
-from skimpy import skim
+import os
+import json
+import pandas as pd
 from datetime import datetime
 
-# Fonction pour récupérer les données à partir des URLs initiales
 def load_data_url():
     today = datetime.today().strftime('%Y-%m-%d')
     logs_url = f"http://sc-e.fr/docs/logs_vols_{today}.csv"
@@ -71,62 +70,74 @@ def load_data_url():
     
     return logs_vols, df_degrade
 
-# Fonction pour charger les derniers fichiers locaux
-def local_data():
-    logs_vols_path = sorted([f for f in os.listdir('D:\\Top_gun\\Datasets\\df_logs_vols') if f.startswith('logs_vols_')])[-1]
-    degradations_path = sorted([f for f in os.listdir('D:\\Top_gun\\Datasets\\df_degradations') if f.startswith('degradations_')])[-1]
-    
-    logs_vols = pd.read_csv(f"D:\\Top_gun\\Datasets\\df_logs_vols\\{logs_vols_path}")
-    df_degrade = pd.read_csv(f"D:\\Top_gun\\Datasets\\df_degradations\\{degradations_path}")
-    
-    return logs_vols, df_degrade
+def get_latest_file_path(directory, prefix):
+    files = sorted([f for f in os.listdir(directory) if f.startswith(prefix)])
+    return os.path.join(directory, files[-1]) if files else None
 
-# Fonction pour sauvegarder les données nettoyées
 def save_cleaned_data(df, file_path):
-    cleaned_dir = os.path.dirname(file_path)
-    if not os.path.exists(cleaned_dir):
-        os.makedirs(cleaned_dir)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     df.to_csv(file_path, index=False)
-    print(f"Fichier nettoyé sauvegardé à {file_path}")
+    print(f"Fichier nettoyé et sauvegardé dans {file_path}")
 
-# Fonction pour nettoyer les datasets
-def autoclean_dataset(df):
-    print("Résumé des données :")
-    print(skim(df))
-    print("Valeurs manquantes :")
-    print(df.isnull().sum())
-    print("Valeurs uniques par colonne :")
-    print(df.nunique())
-    
-    # Copie du dataset original pour les modifications
-    cleaned_data = df.copy()
-  
-    
-    return cleaned_data
 
-# Fonction principale pour récupérer, concaténer et nettoyer les données
+def autoclean_logs_vols(df):
+    def fix_json_format(x):
+        return x.replace('\'', '\"')
+    
+    df['sensor_data'] = df['sensor_data'].apply(lambda x: json.loads(fix_json_format(x)))
+    sensor_data_df = pd.json_normalize(df['sensor_data'])
+    df = df.drop(columns=['sensor_data'])
+    
+    # Réinitialisation index avant concaténation pour éviter les doublons ce bout de code a revoir
+    # car il ne fonctionne pas possible de la replacer autre part
+    df.reset_index(drop=True, inplace=True)
+    sensor_data_df.reset_index(drop=True, inplace=True)
+    df = pd.concat([df, sensor_data_df], axis=1)
+    # format datetime à revoir car il n'est pas pris en compte
+    df['jour_vol'] = pd.to_datetime(df['jour_vol'], format='%Y-%m-%d', errors='coerce')
+    df['temp en °C'] = df['temp'].replace('°C', '', regex=True).astype(float).infer_objects(copy=False)
+    df['pressure en hPa'] = df['pressure'].replace('hPa', '', regex=True).astype(float).infer_objects(copy=False)
+    df['vibrations en m/s²'] = df['vibrations'].replace('m/s²', '', regex=True).astype(float).round(3).infer_objects(copy=False)
+    df.drop(columns=['temp', 'pressure', 'vibrations'], inplace=True)
+    
+    return df
+
+
+def autoclean_degradations(df):
+    # le format datetime aussi a revoir car il n'est pas pris en compte
+    df['measure_day'] = pd.to_datetime(df['measure_day'], format='%Y-%m-%d', errors='coerce')
+    df['need_replacement'] = df['need_replacement'].replace({True: 1, False: 0}).infer_objects(copy=False)
+    df['usure_nouvelle'] = round(df['usure_nouvelle'], 0)
+    
+    return df
+
 def main():
-    # Charger les derniers fichiers locaux
-    local_logs_vols, local_df_degrade = local_data()
+    # Chemins vers les fichiers locaux
+    logs_vols_path = get_latest_file_path(r'D:\Top_gun\Datasets\df_logs_vols', 'all_data_logs_vols.csv')
+    degradations_path = get_latest_file_path(r'D:\Top_gun\Datasets\df_degradations', 'all_data_degradations.csv')
     
-    # Charger les nouveaux fichiers depuis les URLs
+    # Chargement des données locales
+    if logs_vols_path and degradations_path:
+        local_logs_vols = pd.read_csv(logs_vols_path)
+        local_df_degrade = pd.read_csv(degradations_path)
+    else:
+        local_logs_vols, local_df_degrade = pd.DataFrame(), pd.DataFrame()
+
+    # Téléchargement des nouvelles données depuis les URLs
     new_logs_vols, new_df_degrade = load_data_url()
     
-    # Concaténer les nouveaux fichiers avec les anciens
+    # Concaténation des données locaux et nouveaux
     logs_vols = pd.concat([local_logs_vols, new_logs_vols], axis=0)
     df_degrade = pd.concat([local_df_degrade, new_df_degrade], axis=0)
     
-    # Nettoyer les fichiers concaténés
-    cleaned_logs_vols = autoclean_dataset(logs_vols)
-    cleaned_df_degrade = autoclean_dataset(df_degrade)
+    # Nettoyage des données concaténés
+    cleaned_logs_vols = autoclean_logs_vols(logs_vols)
+    cleaned_df_degrade = autoclean_degradations(df_degrade)
     
-    # Chemins vers les fichiers à écraser
-    logs_vols_file_path = f"D:\\Top_gun\\Datasets\\df_logs_vols\\logs_vols_{datetime.today().strftime('%Y-%m-%d')}.csv"
-    degradations_file_path = f"D:\\Top_gun\\Datasets\\df_degradations\\degradations_{datetime.today().strftime('%Y-%m-%d')}.csv"
-    
-    # Sauvegarder les fichiers nettoyés
-    save_cleaned_data(cleaned_logs_vols, logs_vols_file_path)
-    save_cleaned_data(cleaned_df_degrade, degradations_file_path)
+    # Export des données nettoyées
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    save_cleaned_data(cleaned_logs_vols, f"D:\\Top_gun\\Data_clean\\all_data_logs_vols.csv")
+    save_cleaned_data(cleaned_df_degrade, f"D:\\Top_gun\\Data_clean\\all_data_degradations.csv")
 
 if __name__ == "__main__":
     main()
