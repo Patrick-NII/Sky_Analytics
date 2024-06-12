@@ -136,8 +136,8 @@ def main():
     
     # Export des données nettoyées
     today_str = datetime.today().strftime('%Y-%m-%d')
-    save_cleaned_data(cleaned_logs_vols, f"D:\\Top_gun\\Data_clean\\Update_logs_vols.csv")
-    save_cleaned_data(cleaned_df_degrade, f"D:\\Top_gun\\Data_clean\\Update_degradations.csv")
+    save_cleaned_data(cleaned_logs_vols, f"D:\\Top_gun\\Data_clean\\Update_logs_vols_{today_str}.csv")
+    save_cleaned_data(cleaned_df_degrade, f"D:\\Top_gun\\Data_clean\\Update_degradations_{today_str}.csv")
 
 if __name__ == "__main__":
     main()
