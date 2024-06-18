@@ -1,5 +1,5 @@
-#!/bin/bash
-remotes=("myrepo""collegerepo")
+
+remotes=("myrepo" "collegerepo")
 
 branch="Bugfix"
 
