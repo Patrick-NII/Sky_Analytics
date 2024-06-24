@@ -10,6 +10,17 @@ import warnings
 # Ignorer les FutureWarnings spécifiques
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+"""
+Information de connexion à la base de données MySQL sur le serveur distant
+
+username = 'root'
+password = 'root'
+host = '31.38.158.71'
+database = 'Sky_Analytics'
+
+"""
+
+
 # Configuration de la connexion à la base de données MySQL
 db_user = 'root'
 db_password = 'root'
