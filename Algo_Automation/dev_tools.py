@@ -142,5 +142,5 @@ if __name__ == "__main__":
     main()
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
-# 0 12 * * * python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
+# 0 12 * * * /user/bin/python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
 
