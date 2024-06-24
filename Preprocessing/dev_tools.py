@@ -2,21 +2,29 @@ import os
 import json
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine, inspect
 import re
 
 # Configuration de la connexion à la base de données MySQL
 db_user = 'root'
-db_password = 'user_42'
+db_password = 'root'
 db_host = '127.0.0.1'
-db_port = '3306'  #
-db_name = 'localhost'
+db_port = '3306'
+db_name = 'Sky_Analytics'
 engine = create_engine(f'mysql+mysqlconnector://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}')
 
 def table_exists(engine, table_name):
     inspector = inspect(engine)
     return inspector.has_table(table_name)
+
+def get_last_date(engine, table_name, date_column):
+    if not table_exists(engine, table_name):
+        return None
+    query = f"SELECT MAX({date_column}) FROM {table_name}"
+    with engine.connect() as connection:
+        result = connection.execute(query).scalar()
+    return result
 
 def load_data_url(date):
     logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
@@ -69,14 +77,21 @@ def initialize_database(engine, table_name, file_path, clean_function):
     else:
         print(f"La table {table_name} existe déjà, aucune initialisation nécessaire.")
 
-def update_daily_data(engine, date, table_name, clean_function, url_function):
-    data = url_function(date)
-    cleaned_data = clean_function(data)
-    if not cleaned_data.empty:
-        cleaned_data.to_sql(name=table_name, con=engine, if_exists='append', index=False)
-        print(f"Données pour {table_name} du {date} ajoutées à la base de données.")
-    else:
-        print(f"Aucune donnée à ajouter pour {table_name} du {date}.")
+def update_daily_data(engine, start_date, end_date, table_name, clean_function, url_function):
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.strftime('%Y-%m-%d')
+        logs_vols, degradations = load_data_url(date_str)
+        if table_name == 'logs_vols':
+            cleaned_data = clean_function(logs_vols)
+        else:
+            cleaned_data = clean_function(degradations)
+        if not cleaned_data.empty:
+            cleaned_data.to_sql(name=table_name, con=engine, if_exists='append', index=False)
+            print(f"Données pour {table_name} du {date_str} ajoutées à la base de données.")
+        else:
+            print(f"Aucune donnée à ajouter pour {table_name} du {date_str}.")
+        current_date += timedelta(days=1)
 
 def main():
     # Initialiser les tables statiques
@@ -88,15 +103,19 @@ def main():
     initialize_database(engine, 'logs_vols', r'D:\Sky_Analytics\Datasets\df_logs_vols\logs_vols_2024-06-02.csv', clean_logs_vols)
     
     # Date du jour
-    today_str = datetime.today().strftime('%Y-%m-%d')
-
-    # Mettre à jour les tables dynamiques avec les données du jour
-    logs_vols, degradations = load_data_url(today_str)
-    cleaned_logs_vols = clean_logs_vols(logs_vols)
-    cleaned_degradations = clean_degradations(degradations)
+    today = datetime.today().date()
     
-    cleaned_logs_vols.to_sql(name='logs_vols', con=engine, if_exists='append', index=False)
-    cleaned_degradations.to_sql(name='degradations', con=engine, if_exists='append', index=False)
+    # Récupérer la dernière date de mise à jour dans les tables logs_vols et degradations
+    last_logs_date = get_last_date(engine, 'logs_vols', 'jour_vol') or today
+    last_degradations_date = get_last_date(engine, 'degradations', 'measure_day') or today
+    
+    # Déterminer la date de début pour l'actualisation (le jour suivant la dernière date connue)
+    start_logs_date = last_logs_date + timedelta(days=1)
+    start_degradations_date = last_degradations_date + timedelta(days=1)
+    
+    # Mettre à jour les tables dynamiques avec les données manquantes
+    update_daily_data(engine, start_logs_date, today, 'logs_vols', clean_logs_vols, load_data_url)
+    update_daily_data(engine, start_degradations_date, today, 'degradations', clean_degradations, load_data_url)
 
 if __name__ == "__main__":
     main()
