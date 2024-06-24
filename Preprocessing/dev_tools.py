@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 import re
 
 # Configuration de la connexion à la base de données MySQL
@@ -21,7 +21,7 @@ def table_exists(engine, table_name):
 def get_last_date(engine, table_name, date_column):
     if not table_exists(engine, table_name):
         return None
-    query = f"SELECT MAX({date_column}) FROM {table_name}"
+    query = text(f"SELECT MAX({date_column}) FROM {table_name}")
     with engine.connect() as connection:
         result = connection.execute(query).scalar()
     return result
