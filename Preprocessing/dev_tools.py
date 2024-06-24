@@ -5,6 +5,10 @@ import requests
 from datetime import datetime, timedelta, date
 from sqlalchemy import create_engine, inspect, text
 import re
+import warnings
+
+# Ignorer les FutureWarnings spécifiques
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Configuration de la connexion à la base de données MySQL
 db_user = 'root'
