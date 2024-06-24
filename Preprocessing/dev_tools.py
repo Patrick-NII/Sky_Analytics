@@ -2,7 +2,7 @@ import os
 import json
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy import create_engine, inspect, text
 import re
 
@@ -48,7 +48,7 @@ def clean_logs_vols(df):
     df = df.drop(columns=['sensor_data'])
     df = pd.concat([df, sensor_data_df], axis=1)
     
-    df['jour_vol'] = pd.to_datetime(df['jour_vol'], format='%Y-%m-%d', errors='coerce')
+    df['jour_vol'] = pd.to_datetime(df['jour_vol'], format='%Y-%m-%d', errors='coerce').dt.date
     df['temp'] = df['temp'].str.replace('°C', '').astype(float)
     df['pressure'] = df['pressure'].str.replace('hPa', '').astype(float)
     df['vibrations'] = df['vibrations'].str.replace('m/s²', '').astype(float)
@@ -108,6 +108,12 @@ def main():
     # Récupérer la dernière date de mise à jour dans les tables logs_vols et degradations
     last_logs_date = get_last_date(engine, 'logs_vols', 'jour_vol') or today
     last_degradations_date = get_last_date(engine, 'degradations', 'measure_day') or today
+    
+    # Convertir en date uniquement pour la comparaison
+    if isinstance(last_logs_date, datetime):
+        last_logs_date = last_logs_date.date()
+    if isinstance(last_degradations_date, datetime):
+        last_degradations_date = last_degradations_date.date()
     
     # Déterminer la date de début pour l'actualisation (le jour suivant la dernière date connue)
     start_logs_date = last_logs_date + timedelta(days=1)
