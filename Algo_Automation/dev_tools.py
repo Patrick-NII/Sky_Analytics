@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, inspect, text
 import re
 import warnings
 
-# Ignorer les FutureWarnings spécifiques
+# Ignorer les FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 """
