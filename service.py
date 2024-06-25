@@ -4,8 +4,8 @@ from mysql.connector import errorcode
 # Test de connexion à la base de données MySQL sur le serveur distant
 
 try:
-    cnx = mysql.connector.connect(user='remote_user',
-                                  password='remote_password',
+    cnx = mysql.connector.connect(user='Top_gun',
+                                  password='Top_gun',
                                   host='31.38.158.71',
                                   database='Sky_Analytics')
     cursor = cnx.cursor()
