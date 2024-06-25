@@ -7,7 +7,7 @@ try:
     cnx = mysql.connector.connect(user='remote_user',
                                   password='remote_password',
                                   host='31.38.158.71',
-                                  database='Skay_Analytics')
+                                  database='Sky_Analytics')
     cursor = cnx.cursor()
     print("Connexion réussie à la base de données")
     cursor.close()
