@@ -22,11 +22,11 @@ database = 'Sky_Analytics'
 
 
 # Configuration de la connexion à la base de données MySQL
-db_user = 'root'
-db_password = 'root'
-db_host = '127.0.0.1'
+db_user = 'Top_gun'
+db_password = 'zg6N&284Bb<w'
+db_host = '212.227.48.180'
 db_port = '3306'
-db_name = 'Sky_Analytics'
+db_name = 'Top_gun'
 engine = create_engine(f'mysql+mysqlconnector://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}')
 
 def table_exists(engine, table_name):
