@@ -5,9 +5,9 @@ from mysql.connector import errorcode
 
 try:
     cnx = mysql.connector.connect(user='Top_gun',
-                                  password='Top_gun',
-                                  host='31.38.158.71',
-                                  database='Sky_Analytics')
+                                  password='zg6N&284Bb<w',
+                                  host='212.227.48.180',
+                                  database='Top_gun')
     cursor = cnx.cursor()
     print("Connexion réussie à la base de données")
     cursor.close()
