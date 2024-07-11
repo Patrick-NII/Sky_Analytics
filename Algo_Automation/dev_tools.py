@@ -110,12 +110,12 @@ def update_daily_data(engine, start_date, end_date, table_name, clean_function, 
 
 def main():
     # Initialiser les tables statiques
-    initialize_database(engine, 'aeronefs', r'D:\Sky_Analytics\Datasets\df_aeronef\aeronefs_2024-06-02.csv', lambda df: df)
-    initialize_database(engine, 'composants', r'D:\Sky_Analytics\Datasets\df_composants\composants_2024-06-02.csv', lambda df: df)
+    initialize_database(engine, 'aeronefs', r'E:\Sky_Analytics\Datasets\df_aeronef\aeronefs_2024-06-02.csv', lambda df: df)
+    initialize_database(engine, 'composants', r'E:\Sky_Analytics\Datasets\df_composants\composants_2024-06-02.csv', lambda df: df)
 
     # Initialiser les tables dynamiques
-    initialize_database(engine, 'degradations', r'D:\Sky_Analytics\Datasets\df_degradations\degradations_2024-06-02.csv', clean_degradations)
-    initialize_database(engine, 'logs_vols', r'D:\Sky_Analytics\Datasets\df_logs_vols\logs_vols_2024-06-02.csv', clean_logs_vols)
+    initialize_database(engine, 'degradations', r'E:\Sky_Analytics\Datasets\df_degradations\degradations_2024-06-02.csv', clean_degradations)
+    initialize_database(engine, 'logs_vols', r'E:\Sky_Analytics\Datasets\df_logs_vols\logs_vols_2024-06-02.csv', clean_logs_vols)
     
     # Date du jour
     today = datetime.today().date()
