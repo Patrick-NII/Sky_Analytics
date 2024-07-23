@@ -10,17 +10,6 @@ import warnings
 # Ignorer les FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-"""
-Information de connexion à la base de données MySQL sur le serveur distant
-
-username = 'remote_user'
-password = 'remote_password'
-host = '31.38.158.71'
-database = 'Sky_Analytics'
-
-"""
-
-
 # Configuration de la connexion à la base de données MySQL
 db_user = 'Top_gun'
 db_password = 'zg6N&284Bb<w'
@@ -33,30 +22,29 @@ def table_exists(engine, table_name):
     inspector = inspect(engine)
     return inspector.has_table(table_name)
 
-def get_last_date(engine, table_name, date_column):
-    if not table_exists(engine, table_name):
+def get_last_date(engine, table, date_col):
+    if not table_exists(engine, table):
         return None
-    query = text(f"SELECT MAX({date_column}) FROM {table_name}")
-    with engine.connect() as connection:
-        result = connection.execute(query).scalar()
+    query = text(f"SELECT MAX({date_col}) FROM {table}")
+    with engine.connect() as conn:
+        result = conn.execute(query).scalar()
     return result
 
-def load_data_url(date):
+def load_data(date):
     logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
     degrade_url = f"http://sc-e.fr/docs/degradations_{date}.csv"
+   
+    logs = pd.read_csv(logs_url)
+    degrades = pd.read_csv(degrade_url)
+    print(f"Données chargées depuis les URLs pour la date {date}")
     
-        logs_vols = pd.read_csv(logs_url)
-        df_degrade = pd.read_csv(degrade_url)
-        print(f"Données chargées depuis les URLs pour la date {date}")
-        logs_vols = pd.DataFrame()
-        df_degrade = pd.DataFrame()
-    return logs_vols, df_degrade
+    logs = pd.DataFrame()
+    degrades = pd.DataFrame()
+        
+    return logs, degrades
 
-def clean_logs_vols(df):
-    def fix_json_format(x):
-        return x.replace('\'', '\"')
-    
-    df['sensor_data'] = df['sensor_data'].apply(lambda x: json.loads(fix_json_format(x)) if pd.notnull(x) else {})
+def clean_logs(df):
+    df['sensor_data'] = df['sensor_data'].apply(lambda x: json.loads(x.replace('\'', '\"')) if pd.notnull(x) else {})
     sensor_data_df = pd.json_normalize(df['sensor_data'])
     df = df.drop(columns=['sensor_data'])
     df = pd.concat([df, sensor_data_df], axis=1)
@@ -74,71 +62,77 @@ def clean_logs_vols(df):
     
     return df
 
-def clean_degradations(df):
+def clean_degrades(df):
     df['measure_day'] = pd.to_datetime(df['measure_day'], format='%Y-%m-%d', errors='coerce').dt.date
     df['need_replacement'] = df['need_replacement'].replace({True: 1, False: 0}).astype(int)
     df['usure_nouvelle'] = df['usure_nouvelle'].round(0)
     df = df[df['linked_aero'] != 'E170_5551']
     return df
 
-def initialize_database(engine, table_name, file_path, clean_function):
-    if not table_exists(engine, table_name):
+def init_db(engine, table, file_path, clean_fn):
+    if not table_exists(engine, table):
         df = pd.read_csv(file_path)
-        cleaned_data = clean_function(df)
-        cleaned_data.to_sql(name=table_name, con=engine, if_exists='replace', index=False)
-        print(f"Base de données initialisée avec le fichier {file_path} pour la table {table_name}.")
+        cleaned_data = clean_fn(df)
+        cleaned_data.to_sql(name=table, con=engine, if_exists='replace', index=False)
+        print(f"Base de données initialisée avec le fichier {file_path} pour la table {table}")
     else:
-        print(f"La table {table_name} existe déjà, aucune initialisation nécessaire.")
+        print(f"La table {table} existe déjà,pas d'initialisation")
 
-def update_daily_data(engine, start_date, end_date, table_name, clean_function, url_function):
+def update_data(engine, start_date, end_date, table, clean_fn, load_fn):
     current_date = start_date
     while current_date <= end_date:
         date_str = current_date.strftime('%Y-%m-%d')
-        logs_vols, degradations = load_data_url(date_str)
-        if table_name == 'logs_vols':
-            cleaned_data = clean_function(logs_vols)
+        logs, degrades = load_fn(date_str)
+        if table == 'logs_vols':
+            new_data = clean_fn(logs)
         else:
-            cleaned_data = clean_function(degradations)
-        if not cleaned_data.empty:
-            cleaned_data.to_sql(name=table_name, con=engine, if_exists='append', index=False)
-            print(f"Données pour {table_name} du {date_str} ajoutées à la base de données.")
+            new_data = clean_fn(degrades)
+        if not new_data.empty:
+            with engine.connect() as conn:
+                existing_dates = pd.read_sql(f"SELECT DISTINCT {new_data.columns[0]} FROM {table}", conn)
+                new_data = new_data[~new_data[new_data.columns[0]].isin(existing_dates[existing_dates.columns[0]])]
+                if not new_data.empty:
+                    new_data.to_sql(name=table, con=engine, if_exists='append', index=False)
+                    print(f"Données pour {table} du {date_str} ajoutées à la base de données")
+                else:
+                    print(f"Pas de donnée à mettre à jour pour {table} du {date_str}")
         else:
-            print(f"Aucune donnée à ajouter pour {table_name} du {date_str}.")
+            print(f"Pas de donnée à mettre à jour {table} du {date_str}")
         current_date += timedelta(days=1)
 
 def main():
     # Initialiser les tables statiques
-    initialize_database(engine, 'aeronefs', r'E:\Sky_Analytics\Datasets\df_aeronef\aeronefs_2024-06-02.csv', lambda df: df)
-    initialize_database(engine, 'composants', r'E:\Sky_Analytics\Datasets\df_composants\composants_2024-06-02.csv', lambda df: df)
+    init_db(engine, 'aeronefs', r'E:\Sky_Analytics\Datasets\df_aeronef\aeronefs_2024-06-02.csv', lambda df: df)
+    init_db(engine, 'composants', r'E:\Sky_Analytics\Datasets\df_composants\composants_2024-06-02.csv', lambda df: df)
 
     # Initialiser les tables dynamiques
-    initialize_database(engine, 'degradations', r'E:\Sky_Analytics\Datasets\df_degradations\degradations_2024-06-02.csv', clean_degradations)
-    initialize_database(engine, 'logs_vols', r'E:\Sky_Analytics\Datasets\df_logs_vols\logs_vols_2024-06-02.csv', clean_logs_vols)
+    init_db(engine, 'degradations', r'E:\Sky_Analytics\Datasets\df_degradations\degradations_2024-06-02.csv', clean_degrades)
+    init_db(engine, 'logs_vols', r'E:\Sky_Analytics\Datasets\df_logs_vols\logs_vols_2024-06-02.csv', clean_logs)
     
     # Date du jour
     today = datetime.today().date()
     
     # Récupérer la dernière date de mise à jour dans les tables logs_vols et degradations
     last_logs_date = get_last_date(engine, 'logs_vols', 'jour_vol') or today
-    last_degradations_date = get_last_date(engine, 'degradations', 'measure_day') or today
+    last_degrades_date = get_last_date(engine, 'degradations', 'measure_day') or today
     
     # Convertir en date uniquement pour la comparaison
     if isinstance(last_logs_date, datetime):
         last_logs_date = last_logs_date.date()
-    if isinstance(last_degradations_date, datetime):
-        last_degradations_date = last_degradations_date.date()
+    if isinstance(last_degrades_date, datetime):
+        last_degrades_date = last_degrades_date.date()
     
     # Déterminer la date de début pour l'actualisation (le jour suivant la dernière date connue)
     start_logs_date = last_logs_date + timedelta(days=1)
-    start_degradations_date = last_degradations_date + timedelta(days=1)
+    start_degrades_date = last_degrades_date + timedelta(days=1)
     
     # Mettre à jour les tables dynamiques avec les données manquantes
-    update_daily_data(engine, start_logs_date, today, 'logs_vols', clean_logs_vols, load_data_url)
-    update_daily_data(engine, start_degradations_date, today, 'degradations', clean_degradations, load_data_url)
+    update_data(engine, start_logs_date, today, 'logs_vols', clean_logs, load_data)
+    update_data(engine, start_degrades_date, today, 'degradations', clean_degrades, load_data)
 
 if __name__ == "__main__":
     main()
 
+
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
 # 0 12 * * * /user/bin/python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
-
