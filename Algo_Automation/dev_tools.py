@@ -31,13 +31,12 @@ def get_last_date(engine, table, date_col):
 
 # ETL Process
 class ETLProcess:
-    def __init__(self, engine, start_date, end_date, table, clean_fn, load_fn):
+    def __init__(self, engine, start_date, end_date, table, clean_fn):
         self.engine = engine
         self.start_date = start_date
         self.end_date = end_date
         self.table = table
         self.clean_fn = clean_fn
-        self.load_fn = load_fn
 
     def extract(self, date):
         logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
@@ -52,8 +51,8 @@ class ETLProcess:
             df_degrade = pd.DataFrame()
         return logs_vols, df_degrade
 
-    def transform(self, data, clean_fn):
-        cleaned_data = clean_fn(data)
+    def transform(self, data):
+        cleaned_data = self.clean_fn(data)
         cleaned_data.drop_duplicates(inplace=True)
         return cleaned_data
 
@@ -67,9 +66,9 @@ class ETLProcess:
             date_str = current_date.strftime('%Y-%m-%d')
             logs_vols, degradations = self.extract(date_str)
             if self.table == 'logs_vols':
-                new_data = self.transform(logs_vols, self.clean_fn)
+                new_data = self.transform(logs_vols)
             else:
-                new_data = self.transform(degradations, self.clean_fn)
+                new_data = self.transform(degradations)
             if not new_data.empty:
                 self.load(new_data)
             else:
@@ -151,10 +150,10 @@ def main():
     start_degrades_date = last_degrades_date + timedelta(days=1)
     
     # Mettre à jour les tables dynamiques avec les données manquantes
-    logs_etl = ETLProcess(engine, start_logs_date, today, 'logs_vols', clean_logs, load_data)
+    logs_etl = ETLProcess(engine, start_logs_date, today, 'logs_vols', clean_logs)
     logs_etl.run()
     
-    degrades_etl = ETLProcess(engine, start_degrades_date, today, 'degradations', clean_degrades, load_data)
+    degrades_etl = ETLProcess(engine, start_degrades_date, today, 'degradations', clean_degrades)
     degrades_etl.run()
     
     # Supprimer les doublons après la mise à jour
@@ -166,6 +165,7 @@ if __name__ == "__main__":
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
 # 0 12 * * * /user/bin/python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
+
 
 
 
