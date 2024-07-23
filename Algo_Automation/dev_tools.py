@@ -30,6 +30,14 @@ def get_last_date(engine, table, date_col):
         result = conn.execute(query).scalar()
     return result
 
+def check_url_exists(url):
+    try:
+        response = requests.head(url)
+        return response.status_code == 200
+    except requests.RequestException as e:
+        print(f"Erreur lors de la vérification de l'URL {url}: {e}")
+        return False
+
 # ETL Process
 class ETLProcess:
     def __init__(self, engine, start_date, end_date, table, clean_fn):
@@ -42,20 +50,36 @@ class ETLProcess:
     def extract(self, date):
         logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
         degrade_url = f"http://sc-e.fr/docs/degradations_{date}.csv"
-        try:
-            logs_vols = pd.read_csv(logs_url)
-            df_degrade = pd.read_csv(degrade_url)
-            print(f"Données chargées depuis les URLs pour la date {date}")
-        except Exception as e:
-            print(f"Erreur lors du chargement des données depuis les URLs : {e} 😞")
-            logs_vols = pd.DataFrame()
-            df_degrade = pd.DataFrame()
+        logs_vols = pd.DataFrame()
+        df_degrade = pd.DataFrame()
+        
+        if check_url_exists(logs_url):
+            try:
+                logs_vols = pd.read_csv(logs_url)
+                print(f"Données chargées depuis {logs_url} pour la date {date}")
+            except Exception as e:
+                print(f"Erreur lors du chargement des données depuis {logs_url}: {e}")
+        else:
+            print(f"URL non trouvée : {logs_url}")
+        
+        if check_url_exists(degrade_url):
+            try:
+                df_degrade = pd.read_csv(degrade_url)
+                print(f"Données chargées depuis {degrade_url} pour la date {date}")
+            except Exception as e:
+                print(f"Erreur lors du chargement des données depuis {degrade_url}: {e}")
+        else:
+            print(f"URL non trouvée : {degrade_url}")
+        
         return logs_vols, df_degrade
 
     def transform(self, data):
-        cleaned_data = self.clean_fn(data)
-        cleaned_data.drop_duplicates(inplace=True)
-        return cleaned_data
+        if not data.empty:
+            cleaned_data = self.clean_fn(data)
+            cleaned_data.drop_duplicates(inplace=True)
+            return cleaned_data
+        else:
+            return pd.DataFrame()
 
     def load(self, data):
         if not data.empty:
@@ -81,13 +105,20 @@ class ETLProcess:
             current_date += timedelta(days=1)
 
 def clean_logs(df):
-    def fix_json_format(x):
-        return x.replace('\'', '\"')
+    required_columns = ['jour_vol', 'temp', 'pressure', 'vibrations']
     
-    df['sensor_data'] = df['sensor_data'].apply(lambda x: json.loads(fix_json_format(x)) if pd.notnull(x) else {})
-    sensor_data_df = pd.json_normalize(df['sensor_data'])
-    df = df.drop(columns=['sensor_data'])
-    df = pd.concat([df, sensor_data_df], axis=1)
+    if not all(col in df.columns for col in required_columns):
+        print("Colonnes manquantes dans le DataFrame")
+        return pd.DataFrame()  # Retourner un DataFrame vide si des colonnes nécessaires sont manquantes
+    
+    if 'sensor_data' in df.columns:
+        def fix_json_format(x):
+            return x.replace('\'', '\"')
+        
+        df['sensor_data'] = df['sensor_data'].apply(lambda x: json.loads(fix_json_format(x)) if pd.notnull(x) else {})
+        sensor_data_df = pd.json_normalize(df['sensor_data'])
+        df = df.drop(columns=['sensor_data'])
+        df = pd.concat([df, sensor_data_df], axis=1)
     
     df['jour_vol'] = pd.to_datetime(df['jour_vol'], format='%Y-%m-%d', errors='coerce').dt.date
     df['temp'] = df['temp'].str.replace('°C', '').astype(float)
@@ -103,6 +134,12 @@ def clean_logs(df):
     return df
 
 def clean_degrades(df):
+    required_columns = ['measure_day', 'need_replacement', 'usure_nouvelle', 'linked_aero']
+    
+    if not all(col in df.columns for col in required_columns):
+        print("Colonnes manquantes dans le DataFrame")
+        return pd.DataFrame()  # Retourner un DataFrame vide si des colonnes nécessaires sont manquantes
+    
     df['measure_day'] = pd.to_datetime(df['measure_day'], format='%Y-%m-%d', errors='coerce').dt.date
     df['need_replacement'] = df['need_replacement'].replace({True: 1, False: 0}).astype(int)
     df['usure_nouvelle'] = df['usure_nouvelle'].round(0)
@@ -151,6 +188,11 @@ def main():
     # Date du jour
     today = datetime.today().date()
     
+    # Recharger toutes les données historiques depuis le début
+    historical_start_date = datetime(2024, 6, 1).date()  # Date de début historique
+    reload_historical_data(engine, historical_start_date, today, 'logs_vols', clean_logs)
+    reload_historical_data(engine, historical_start_date, today, 'degradations', clean_degrades)
+    
     # Récupérer la dernière date de mise à jour dans les tables logs_vols et degradations
     last_logs_date = get_last_date(engine, 'logs_vols', 'jour_vol') or today
     last_degrades_date = get_last_date(engine, 'degradations', 'measure_day') or today
@@ -175,17 +217,13 @@ def main():
     # Supprimer les doublons après la mise à jour
     drop_dup(engine, 'logs_vols')
     drop_dup(engine, 'degradations')
-    
-    # Recharger les données historiques si nécessaire
-    historical_start_date = datetime(2024, 6, 1).date()  # Date de début historique
-    reload_historical_data(engine, historical_start_date, today, 'logs_vols', clean_logs)
-    reload_historical_data(engine, historical_start_date, today, 'degradations', clean_degrades)
 
 if __name__ == "__main__":
     main()
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
 # 0 12 * * * /user/bin/python3 /e/Sky_Analytics/Algo_Automation/dev_tools.py
+
 
 
 
