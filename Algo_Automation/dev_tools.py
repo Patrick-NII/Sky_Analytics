@@ -109,6 +109,7 @@ def update_daily_data(engine, start_date, end_date, table_name, clean_function, 
             print(f"Aucune donnée à ajouter pour {table_name} du {date_str}")
         current_date += timedelta(days=1)
 
+
 def main():
     # Initialiser les tables statiques
     initialize_database(engine, 'aeronefs', r'E:\Sky_Analytics\Datasets\df_aeronef\aeronefs_2024-06-02.csv', lambda df: df)
