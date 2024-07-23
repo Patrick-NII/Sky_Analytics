@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 import warnings
 
 # Ignorer les FutureWarnings
@@ -57,8 +58,12 @@ class ETLProcess:
         return cleaned_data
 
     def load(self, data):
-        data.to_sql(name=self.table, con=self.engine, if_exists='append', index=False)
-        print(f"Données pour {self.table} ajoutées à la base de données avec Succès 😊")
+        try:
+            with self.engine.begin() as conn:
+                data.to_sql(name=self.table, con=conn, if_exists='append', index=False)
+                print(f"Données pour {self.table} ajoutées à la base de données avec Succès 😊")
+        except SQLAlchemyError as e:
+            print(f"Erreur lors du chargement des données dans la table {self.table} : {e}")
 
     def run(self):
         current_date = self.start_date
@@ -114,10 +119,14 @@ def init_db(engine, table, file_path, clean_fn):
         print(f"La table {table} existe déjà, aucune initialisation nécessaire.")
 
 def drop_dup(engine, table):
-    df = pd.read_sql_table(table, engine)
-    df.drop_duplicates(inplace=True)
-    df.to_sql(name=table, con=engine, if_exists='replace', index=False)
-    print(f"Doublons supprimés pour la table {table}.")
+    try:
+        with engine.begin() as conn:
+            df = pd.read_sql_table(table, conn)
+            df.drop_duplicates(inplace=True)
+            df.to_sql(name=table, con=conn, if_exists='replace', index=False)
+            print(f"Suppression des doublons pour la table {table}.")
+    except SQLAlchemyError as e:
+        print(f"Erreur lors de la suppression des doublons pour la table {table} : {e}")
 
 def main():
     # Initialiser les tables statiques
@@ -164,7 +173,7 @@ if __name__ == "__main__":
     main()
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
-# 0 12 * * * /user/bin/python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
+# 0 12 * * * /user/bin/python3 /e/Sky_Analytics/Algo_Automation/dev_tools.py
 
 
 
