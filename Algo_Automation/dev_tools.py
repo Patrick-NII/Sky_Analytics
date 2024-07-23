@@ -58,12 +58,15 @@ class ETLProcess:
         return cleaned_data
 
     def load(self, data):
-        try:
-            with self.engine.begin() as conn:
-                data.to_sql(name=self.table, con=conn, if_exists='append', index=False)
-                print(f"Données pour {self.table} ajoutées à la base de données avec Succès 😊")
-        except SQLAlchemyError as e:
-            print(f"Erreur lors du chargement des données dans la table {self.table} : {e}")
+        if not data.empty:
+            try:
+                with self.engine.begin() as conn:
+                    data.to_sql(name=self.table, con=conn, if_exists='append', index=False)
+                    print(f"Données pour {self.table} ajoutées à la base de données avec succès 😊")
+            except SQLAlchemyError as e:
+                print(f"Erreur lors du chargement des données dans la table {self.table} : {e}")
+        else:
+            print(f"Aucune donnée à ajouter pour la table {self.table}")
 
     def run(self):
         current_date = self.start_date
@@ -74,10 +77,7 @@ class ETLProcess:
                 new_data = self.transform(logs_vols)
             else:
                 new_data = self.transform(degradations)
-            if not new_data.empty:
-                self.load(new_data)
-            else:
-                print(f"Aucune donnée à ajouter pour {self.table} du {date_str}")
+            self.load(new_data)
             current_date += timedelta(days=1)
 
 def clean_logs(df):
@@ -122,11 +122,18 @@ def drop_dup(engine, table):
     try:
         with engine.begin() as conn:
             df = pd.read_sql_table(table, conn)
-            df.drop_duplicates(inplace=True)
-            df.to_sql(name=table, con=conn, if_exists='replace', index=False)
-            print(f"Suppression des doublons pour la table {table}.")
+            if not df.empty:
+                df.drop_duplicates(inplace=True)
+                df.to_sql(name=table, con=conn, if_exists='replace', index=False)
+                print(f"Suppression des doublons pour la table {table}.")
+            else:
+                print(f"La table {table} est vide. Aucune suppression des doublons effectuée.")
     except SQLAlchemyError as e:
         print(f"Erreur lors de la suppression des doublons pour la table {table} : {e}")
+
+def reload_historical_data(engine, start_date, end_date, table, clean_fn):
+    etl_process = ETLProcess(engine, start_date, end_date, table, clean_fn)
+    etl_process.run()
 
 def main():
     # Initialiser les tables statiques
@@ -168,12 +175,18 @@ def main():
     # Supprimer les doublons après la mise à jour
     drop_dup(engine, 'logs_vols')
     drop_dup(engine, 'degradations')
+    
+    # Recharger les données historiques si nécessaire
+    historical_start_date = datetime(2024, 6, 1).date()  # Date de début historique
+    reload_historical_data(engine, historical_start_date, today, 'logs_vols', clean_logs)
+    reload_historical_data(engine, historical_start_date, today, 'degradations', clean_degrades)
 
 if __name__ == "__main__":
     main()
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
 # 0 12 * * * /user/bin/python3 /e/Sky_Analytics/Algo_Automation/dev_tools.py
+
 
 
 
