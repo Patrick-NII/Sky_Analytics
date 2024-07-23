@@ -196,4 +196,5 @@ Suppression des doublons avant la mise à jour.
 Exécution du processus ETL pour les tables dynamiques.
 Suppression des doublons après la mise à jour.
 Exécution du script avec le cron pour automatiser le processus.
+
 """
