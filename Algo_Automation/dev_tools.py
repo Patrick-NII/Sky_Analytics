@@ -29,18 +29,52 @@ def get_last_date(engine, table, date_col):
         result = conn.execute(query).scalar()
     return result
 
-def load_data(date):
-    logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
-    degrade_url = f"http://sc-e.fr/docs/degradations_{date}.csv"
-    try:
-        logs_vols = pd.read_csv(logs_url)
-        df_degrade = pd.read_csv(degrade_url)
-        print(f"Données chargées depuis les URLs pour la date {date}")
-    except Exception as e:
-        print(f"Erreur lors du chargement des données depuis les URLs : {e} 😞")
-        logs_vols = pd.DataFrame()
-        df_degrade = pd.DataFrame()
-    return logs_vols, df_degrade
+# ETL Process
+class ETLProcess:
+    def __init__(self, engine, start_date, end_date, table, clean_fn, load_fn):
+        self.engine = engine
+        self.start_date = start_date
+        self.end_date = end_date
+        self.table = table
+        self.clean_fn = clean_fn
+        self.load_fn = load_fn
+
+    def extract(self, date):
+        logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
+        degrade_url = f"http://sc-e.fr/docs/degradations_{date}.csv"
+        try:
+            logs_vols = pd.read_csv(logs_url)
+            df_degrade = pd.read_csv(degrade_url)
+            print(f"Données chargées depuis les URLs pour la date {date}")
+        except Exception as e:
+            print(f"Erreur lors du chargement des données depuis les URLs : {e} 😞")
+            logs_vols = pd.DataFrame()
+            df_degrade = pd.DataFrame()
+        return logs_vols, df_degrade
+
+    def transform(self, data, clean_fn):
+        cleaned_data = clean_fn(data)
+        cleaned_data.drop_duplicates(inplace=True)
+        return cleaned_data
+
+    def load(self, data):
+        data.to_sql(name=self.table, con=self.engine, if_exists='append', index=False)
+        print(f"Données pour {self.table} ajoutées à la base de données avec Succès 😊")
+
+    def run(self):
+        current_date = self.start_date
+        while current_date <= self.end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            logs_vols, degradations = self.extract(date_str)
+            if self.table == 'logs_vols':
+                new_data = self.transform(logs_vols, self.clean_fn)
+            else:
+                new_data = self.transform(degradations, self.clean_fn)
+            if not new_data.empty:
+                self.load(new_data)
+            else:
+                print(f"Aucune donnée à ajouter pour {self.table} du {date_str}")
+            current_date += timedelta(days=1)
 
 def clean_logs(df):
     def fix_json_format(x):
@@ -80,23 +114,6 @@ def init_db(engine, table, file_path, clean_fn):
     else:
         print(f"La table {table} existe déjà, aucune initialisation nécessaire.")
 
-def update_data(engine, start_date, end_date, table, clean_fn, load_fn):
-    current_date = start_date
-    while current_date <= end_date:
-        date_str = current_date.strftime('%Y-%m-%d')
-        logs_vols, degradations = load_fn(date_str)
-        if table == 'logs_vols':
-            new_data = clean_fn(logs_vols)
-        else:
-            new_data = clean_fn(degradations)
-        if not new_data.empty:
-            new_data.drop_duplicates(inplace=True)
-            new_data.to_sql(name=table, con=engine, if_exists='append', index=False)
-            print(f"Données pour {table} du {date_str} ajoutées à la base de données avec Succès 😊")
-        else:
-            print(f"Aucune donnée à ajouter pour {table} du {date_str}")
-        current_date += timedelta(days=1)
-
 def drop_dup(engine, table):
     df = pd.read_sql_table(table, engine)
     df.drop_duplicates(inplace=True)
@@ -134,8 +151,11 @@ def main():
     start_degrades_date = last_degrades_date + timedelta(days=1)
     
     # Mettre à jour les tables dynamiques avec les données manquantes
-    update_data(engine, start_logs_date, today, 'logs_vols', clean_logs, load_data)
-    update_data(engine, start_degrades_date, today, 'degradations', clean_degrades, load_data)
+    logs_etl = ETLProcess(engine, start_logs_date, today, 'logs_vols', clean_logs, load_data)
+    logs_etl.run()
+    
+    degrades_etl = ETLProcess(engine, start_degrades_date, today, 'degradations', clean_degrades, load_data)
+    degrades_etl.run()
     
     # Supprimer les doublons après la mise à jour
     drop_dup(engine, 'logs_vols')
@@ -146,3 +166,34 @@ if __name__ == "__main__":
 
 # Utilisation du cron pour automatiser l'exécution du script tous les jours à midi
 # 0 12 * * * /user/bin/python3 /d:/Sky_Analytics/Preprocessing/dev_tools.py
+
+
+
+"""
+Classe ETLProcess :
+
+__init__() : Initialise les paramètres nécessaires pour l'ETL.
+extract() : Extrait les données des sources.
+transform() : Transforme et nettoie les données.
+load() : Charge les données transformées dans la base de données.
+run() : Gère le processus ETL pour les dates spécifiées.
+
+
+
+Fonctions de nettoyage :
+clean_logs() et clean_degrades() : Nettoient et transforment les données.
+
+
+Fonction drop_dup() :
+Supprime les doublons dans une table donnée.
+
+
+
+Main Function :
+
+Initialisation des tables statiques.
+Suppression des doublons avant la mise à jour.
+Exécution du processus ETL pour les tables dynamiques.
+Suppression des doublons après la mise à jour.
+Exécution du script avec le cron pour automatiser le processus.
+"""
