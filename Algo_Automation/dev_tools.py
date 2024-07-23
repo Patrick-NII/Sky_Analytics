@@ -44,14 +44,14 @@ def get_last_date(engine, table_name, date_column):
 def load_data_url(date):
     logs_url = f"http://sc-e.fr/docs/logs_vols_{date}.csv"
     degrade_url = f"http://sc-e.fr/docs/degradations_{date}.csv"
-    try:
-        logs_vols = pd.read_csv(logs_url)
-        df_degrade = pd.read_csv(degrade_url)
-        print(f"Données chargées depuis les URLs pour la date {date}")
-    except Exception as e:
-        print(f"Erreur lors du chargement des données depuis les URLs : {e}")
-        logs_vols = pd.DataFrame()
-        df_degrade = pd.DataFrame()
+    
+    logs_vols = pd.read_csv(logs_url)
+    df_degrade = pd.read_csv(degrade_url)
+    print(f"Données chargées depuis les URLs pour la date {date}")
+    
+    logs_vols = pd.DataFrame()
+    df_degrade = pd.DataFrame()
+    
     return logs_vols, df_degrade
 
 def clean_logs_vols(df):
