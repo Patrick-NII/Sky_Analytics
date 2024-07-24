@@ -81,6 +81,7 @@ def clean_degradations(df):
     df['need_replacement'] = df['need_replacement'].replace({True: 1, False: 0}).astype(int)
     df['usure_nouvelle'] = df['usure_nouvelle'].round(0)
     df = df[df['linked_aero'] != 'E170_5551']
+    df = df.drop_duplicates()
     return df
 
 def initialize_database(engine, table_name, file_path, clean_function):
@@ -91,7 +92,6 @@ def initialize_database(engine, table_name, file_path, clean_function):
         print(f"Base de données mis à jour avec le fichier {file_path} pour la table {table_name}.")
     else:
         print(f"La table {table_name} est déja à jour, pas d'initialisation")
-        print("")
 
 def update_daily_data(engine, start_date, end_date, table_name, clean_function, url_function):
     current_date = start_date
